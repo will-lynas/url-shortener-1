@@ -2,16 +2,12 @@ FROM golang:1.21-alpine
 
 WORKDIR /app
 
-COPY go.mod .
+COPY . .
 
 RUN go mod download
 
-COPY .env .
-
-COPY main.go .
-
-RUN go build -o /urlshortener
+RUN go build -o /url-shortener
 
 EXPOSE 8080
 
-CMD [ "/urlshortener" ]
+CMD [ "/url-shortener" ]

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -29,6 +30,11 @@ func main() {
 	port := utils.GetEnv("PORT", "8080")
 	dbPath := utils.GetEnv("DB_PATH", "database/database.sqlite3")
 	sessionSecret := utils.GetEnv("SESSION_SECRET_KEY", utils.GenerateRandomString(32))
+
+	dbDir := filepath.Dir(dbPath)
+	if err := os.MkdirAll(dbDir, os.ModePerm); err != nil {
+		log.Fatalf("Error creating database directory: %v", err)
+	}
 
 	db, err := database.NewDB(dbPath)
 	if err != nil {
