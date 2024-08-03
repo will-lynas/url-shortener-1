@@ -1,11 +1,17 @@
-FROM golang:1.20-alpine
+FROM golang:1.21-alpine
 
 WORKDIR /app
 
-COPY . .
+COPY go.mod .
 
-RUN go mod tidy
+RUN go mod download
+
+COPY .env .
+
+COPY main.go .
+
+RUN go build -o /urlshortener
 
 EXPOSE 8080
 
-CMD ["go", "run", "cmd/main.go"]
+CMD [ "/urlshortener" ]

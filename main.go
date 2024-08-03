@@ -10,9 +10,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/artemstreltsov/url-shortener/internal/database"
-	"github.com/artemstreltsov/url-shortener/internal/handlers"
-	"github.com/artemstreltsov/url-shortener/internal/safebrowsing"
+	"github.com/artem-streltsov/url-shortener/internal/database"
+	"github.com/artem-streltsov/url-shortener/internal/handlers"
+	"github.com/artem-streltsov/url-shortener/internal/safebrowsing"
+	"github.com/artem-streltsov/url-shortener/internal/utils"
 	"github.com/joho/godotenv"
 )
 
@@ -22,18 +23,12 @@ func init() {
 
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found")
+		log.Println("No .env file found, using default values")
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080"
-	}
-
-	dbPath := os.Getenv("DB_PATH")
-	if dbPath == "" {
-		dbPath = "database/database.sqlite3"
-	}
+	port := utils.GetEnv("PORT", "8080")
+	dbPath := utils.GetEnv("DB_PATH", "database/database.sqlite3")
+	sessionSecret := utils.GetEnv("SESSION_SECRET_KEY", utils.GenerateRandomString(32))
 
 	db, err := database.NewDB(dbPath)
 	if err != nil {
@@ -41,12 +36,18 @@ func main() {
 	}
 	defer db.Close()
 
-	if err := safebrowsing.InitSafeBrowsing(); err != nil {
-		log.Fatalf("Error initializing Safe Browsing: %v", err)
+	safeBrowsingAPIKey := os.Getenv("SAFE_BROWSING_API_KEY")
+	if safeBrowsingAPIKey != "" {
+		if err := safebrowsing.InitSafeBrowsing(); err != nil {
+			log.Printf("Error initializing Safe Browsing: %v", err)
+		} else {
+			defer safebrowsing.Close()
+		}
+	} else {
+		log.Println("Safe Browsing API key not provided, safe browsing feature will be disabled")
 	}
-	defer safebrowsing.Close()
 
-	handler := handlers.NewHandler(db)
+	handler := handlers.NewHandler(db, sessionSecret)
 
 	srv := &http.Server{
 		Addr:    ":" + port,

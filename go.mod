@@ -1,6 +1,6 @@
-module github.com/artemstreltsov/url-shortener
+module github.com/artem-streltsov/url-shortener
 
-go 1.20
+go 1.21
 
 require (
 	github.com/google/safebrowsing v0.0.0-20190624211811-bbf0d20d26b3

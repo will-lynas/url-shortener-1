@@ -32,7 +32,8 @@ func InitSafeBrowsing() error {
 
 func IsSafeURL(url string) (bool, error) {
 	if sb == nil {
-		return false, fmt.Errorf("SafeBrowser is not initialized")
+		// If SafeBrowser is not initialized, consider all URLs safe
+		return true, nil
 	}
 
 	threats, err := sb.LookupURLs([]string{url})

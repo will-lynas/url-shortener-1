@@ -1,19 +1,16 @@
 package handlers
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"html/template"
 	"log"
 	"net/http"
-	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
 
-	"github.com/artemstreltsov/url-shortener/internal/database"
-	"github.com/artemstreltsov/url-shortener/internal/safebrowsing"
-	"github.com/artemstreltsov/url-shortener/internal/utils"
+	"github.com/artem-streltsov/url-shortener/internal/database"
+	"github.com/artem-streltsov/url-shortener/internal/safebrowsing"
+	"github.com/artem-streltsov/url-shortener/internal/utils"
 	"github.com/gorilla/sessions"
 	"golang.org/x/crypto/bcrypt"
 )
@@ -24,21 +21,9 @@ type Handler struct {
 	store     *sessions.CookieStore
 }
 
-func NewHandler(db *database.DB) *Handler {
+func NewHandler(db *database.DB, secretKey string) *Handler {
 	templatesDir := "./internal/templates"
 	templates := template.Must(template.ParseGlob(filepath.Join(templatesDir, "*.html")))
-
-	secretKey := os.Getenv("SESSION_SECRET_KEY")
-	if secretKey == "" {
-		key := make([]byte, 32)
-		_, err := rand.Read(key)
-		if err != nil {
-			log.Fatalf("Failed to generate random key: %v", err)
-		}
-		secretKey = base64.StdEncoding.EncodeToString(key)
-		log.Println("WARNING: SESSION_SECRET_KEY not set. Using a randomly generated key.")
-	}
-
 	store := sessions.NewCookieStore([]byte(secretKey))
 	return &Handler{db: db, templates: templates, store: store}
 }
@@ -125,11 +110,9 @@ func (h *Handler) newURLHandler(w http.ResponseWriter, r *http.Request) {
 
 		isSafe, err := safebrowsing.IsSafeURL(url)
 		if err != nil {
-			http.Error(w, "Error checking URL safety", http.StatusInternalServerError)
-			return
-		}
-
-		if !isSafe {
+			log.Printf("Error checking URL safety: %v", err)
+			// Continue with URL creation even if there's an error checking safety
+		} else if !isSafe {
 			http.Error(w, "The provided URL is not safe", http.StatusBadRequest)
 			return
 		}
@@ -192,11 +175,9 @@ func (h *Handler) redirectHandler(w http.ResponseWriter, r *http.Request) {
 
 	isSafe, err := safebrowsing.IsSafeURL(url.URL)
 	if err != nil {
-		http.Error(w, "Error checking URL safety", http.StatusInternalServerError)
-		return
-	}
-
-	if !isSafe {
+		log.Printf("Error checking URL safety: %v", err)
+		// Continue with redirection even if there's an error checking safety
+	} else if !isSafe {
 		http.Error(w, "The requested URL is not safe", http.StatusForbidden)
 		return
 	}
@@ -417,11 +398,9 @@ func (h *Handler) editURLHandler(w http.ResponseWriter, r *http.Request) {
 
 		isSafe, err := safebrowsing.IsSafeURL(newURL)
 		if err != nil {
-			http.Error(w, "Error checking URL safety", http.StatusInternalServerError)
-			return
-		}
-
-		if !isSafe {
+			log.Printf("Error checking URL safety: %v", err)
+			// Continue with URL update even if there's an error checking safety
+		} else if !isSafe {
 			http.Error(w, "The provided URL is not safe", http.StatusBadRequest)
 			return
 		}
