@@ -169,6 +169,10 @@ func (h *Handler) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+    if urls == nil {
+        urls = []database.URL{}
+    }
+
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string][]database.URL{"urls": urls})
 }
