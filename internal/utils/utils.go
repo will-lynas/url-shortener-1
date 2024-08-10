@@ -1,14 +1,20 @@
 package utils
 
 import (
+	"context"
 	"crypto/sha256"
-	"math/rand"
+	"encoding/binary"
 	"net/url"
-	"os"
 	"time"
+
+	"github.com/artem-streltsov/url-shortener/internal/database"
 )
 
 const base62Chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+
+type contextKey string
+
+const userContextKey contextKey = "user"
 
 func encodeBytesToBase62(input []byte) string {
 	result := make([]byte, 0, 10)
@@ -19,27 +25,40 @@ func encodeBytesToBase62(input []byte) string {
 }
 
 func GenerateKey(url string) string {
-	hash := sha256.Sum256([]byte(url))
+	timestamp := time.Now().UnixNano()
+	timestampBytes := make([]byte, 8)
+	binary.LittleEndian.PutUint64(timestampBytes, uint64(timestamp))
+	combinedBytes := append([]byte(url), timestampBytes...)
+	hash := sha256.Sum256(combinedBytes)
+
 	return encodeBytesToBase62(hash[:])[:10]
 }
 
-func IsValidURL(urlStr string) bool {
+func IsValidURL(urlStr string) (string, bool) {
 	u, err := url.Parse(urlStr)
-	return err == nil && u.Scheme != "" && u.Host != ""
+	if err != nil {
+		return urlStr, false
+	}
+
+	if u.Scheme == "" {
+		urlStr = "https://" + urlStr
+		u, err = url.Parse(urlStr)
+		if err != nil {
+			return urlStr, false
+		}
+	}
+
+	return urlStr, u.Scheme != "" && u.Host != ""
 }
 
-func GetEnv(key, fallback string) string {
-	if value, ok := os.LookupEnv(key); ok {
-		return value
-	}
-	return fallback
+func ContextWithUser(ctx context.Context, user *database.User) context.Context {
+	return context.WithValue(ctx, userContextKey, user)
 }
 
-func GenerateRandomString(length int) string {
-	seededRand := rand.New(rand.NewSource(time.Now().UnixNano()))
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = base62Chars[seededRand.Intn(len(base62Chars))]
+func UserFromContext(ctx context.Context) *database.User {
+	user, ok := ctx.Value(userContextKey).(*database.User)
+	if !ok {
+		return nil
 	}
-	return string(b)
+	return user
 }

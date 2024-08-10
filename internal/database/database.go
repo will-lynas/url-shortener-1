@@ -103,6 +103,18 @@ func (db *DB) GetUserByUsername(username string) (*User, error) {
 	return &user, nil
 }
 
+func (db *DB) GetUserByID(id int64) (*User, error) {
+	var user User
+	err := db.QueryRow("SELECT id, username, email, password FROM users WHERE id = ?", id).Scan(&user.ID, &user.Username, &user.Email, &user.Password)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("error querying user: %w", err)
+	}
+	return &user, nil
+}
+
 func (db *DB) InsertURL(url, key string, userID int64, password string) error {
 	stmt, err := db.Prepare("INSERT INTO urls (url, key, user_id, password) VALUES (?, ?, ?, ?)")
 	if err != nil {
@@ -118,7 +130,7 @@ func (db *DB) InsertURL(url, key string, userID int64, password string) error {
 	return nil
 }
 
-func (db *DB) GetURL(key string) (*URL, error) {
+func (db *DB) GetURLByKey(key string) (*URL, error) {
 	var url URL
 	err := db.QueryRow("SELECT id, user_id, url, key, created_at, clicks, password FROM urls WHERE key = ?", key).Scan(&url.ID, &url.UserID, &url.URL, &url.Key, &url.CreatedAt, &url.Clicks, &url.Password)
 	if err != nil {

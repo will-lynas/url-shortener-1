@@ -2,6 +2,7 @@ package safebrowsing
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	safebrowsing "github.com/google/safebrowsing"
@@ -10,15 +11,20 @@ import (
 var sb *safebrowsing.SafeBrowser
 
 func InitSafeBrowsing() error {
-	apiKey := os.Getenv("SAFE_BROWSING_API_KEY")
-	if apiKey == "" {
-		return fmt.Errorf("SAFE_BROWSING_API_KEY environment variable is not set")
+	safeBrowsingAPIKey := os.Getenv("SAFE_BROWSING_API_KEY")
+	if safeBrowsingAPIKey == "" {
+		log.Fatalf("SAFE_BROWSING_API_KEY not provided")
+	}
+
+	safeBrowsingDBPath := os.Getenv("SAFE_BROWSING_DB_PATH")
+	if safeBrowsingDBPath == "" {
+		log.Fatalf("SAFE_BROWSING_DB_PATH not provided")
 	}
 
 	config := &safebrowsing.Config{
-		APIKey: apiKey,
+		APIKey: safeBrowsingAPIKey,
 		ID:     "url-shortener",
-		DBPath: "database/safebrowsing_db",
+		DBPath: safeBrowsingDBPath,
 	}
 
 	var err error
@@ -32,13 +38,12 @@ func InitSafeBrowsing() error {
 
 func IsSafeURL(url string) (bool, error) {
 	if sb == nil {
-		// If SafeBrowser is not initialized, consider all URLs safe
-		return true, nil
+		return false, fmt.Errorf("SafeBrowser is not initialized")
 	}
 
 	threats, err := sb.LookupURLs([]string{url})
 	if err != nil {
-		return false, fmt.Errorf("failed to lookup URL: %v", err)
+		return false, fmt.Errorf("URL not safe: %v", err)
 	}
 
 	isSafe := len(threats[0]) == 0

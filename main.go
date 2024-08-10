@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/gob"
 	"log"
 	"net/http"
 	"os"
@@ -11,29 +10,33 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/artem-streltsov/url-shortener/internal/auth"
 	"github.com/artem-streltsov/url-shortener/internal/database"
 	"github.com/artem-streltsov/url-shortener/internal/handlers"
 	"github.com/artem-streltsov/url-shortener/internal/safebrowsing"
-	"github.com/artem-streltsov/url-shortener/internal/utils"
 	"github.com/joho/godotenv"
 )
 
-func init() {
-	gob.Register(&database.User{})
-}
-
 func main() {
 	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using default values")
+		log.Fatalf("No .env file found")
 	}
 
-	port := utils.GetEnv("PORT", "8080")
-	dbPath := utils.GetEnv("DB_PATH", "database/database.sqlite3")
-	sessionSecret := utils.GetEnv("SESSION_SECRET_KEY", utils.GenerateRandomString(32))
+	port := os.Getenv("PORT")
+	if port == "" {
+		log.Fatalf("PORT not provided")
+	}
+
+	dbPath := os.Getenv("DB_PATH")
+	if dbPath == "" {
+		log.Fatalf("DB_PATH not provided")
+	}
+
+	auth.InitJWTKey()
 
 	dbDir := filepath.Dir(dbPath)
 	if err := os.MkdirAll(dbDir, os.ModePerm); err != nil {
-		log.Fatalf("Error creating database directory: %v", err)
+		log.Fatalf("Error creating database directory %v: %v", dbDir, err)
 	}
 
 	db, err := database.NewDB(dbPath)
@@ -42,18 +45,22 @@ func main() {
 	}
 	defer db.Close()
 
-	safeBrowsingAPIKey := os.Getenv("SAFE_BROWSING_API_KEY")
-	if safeBrowsingAPIKey != "" {
-		if err := safebrowsing.InitSafeBrowsing(); err != nil {
-			log.Printf("Error initializing Safe Browsing: %v", err)
-		} else {
-			defer safebrowsing.Close()
-		}
-	} else {
-		log.Println("Safe Browsing API key not provided, safe browsing feature will be disabled")
+	if err := safebrowsing.InitSafeBrowsing(); err != nil {
+		log.Fatalf("Error initializing Safe Browsing: %v", err)
+	}
+	defer safebrowsing.Close()
+
+	certFile := os.Getenv("TLS_CERT_PATH")
+	if certFile == "" {
+		log.Fatalf("TLS_CERT_PATH not provided")
 	}
 
-	handler := handlers.NewHandler(db, sessionSecret)
+	keyFile := os.Getenv("TLS_KEY_PATH")
+	if keyFile == "" {
+		log.Fatalf("TLS_KEY_PATH not provided")
+	}
+
+	handler := handlers.NewHandler(db)
 
 	srv := &http.Server{
 		Addr:    ":" + port,
@@ -61,9 +68,9 @@ func main() {
 	}
 
 	go func() {
-		log.Printf("Starting server at :%s", port)
-		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Error starting server: %v", err)
+		log.Printf("Starting HTTPS server at :%s", port)
+		if err := srv.ListenAndServeTLS(certFile, keyFile); err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Error starting HTTPS server: %v", err)
 		}
 	}()
 

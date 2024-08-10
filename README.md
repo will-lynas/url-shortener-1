@@ -1,11 +1,6 @@
 # URL Shortener
 
-A URL shortener application built with Go.
-
-## Prerequisites
-
-- Go 1.21 or later
-- Docker (optional, for running with Docker)
+A URL shortener built with Go.
 
 ## Running from source
 
@@ -19,7 +14,7 @@ A URL shortener application built with Go.
    ```
    cp example.env .env
    ```
-   Edit the `.env` file if you want to customize any settings. The `SAFE_BROWSING_API_KEY` and `SESSION_SECRET_KEY` are optional. If not provided, the safe browsing feature will be disabled and the session secret key will be a random string.
+   Edit the `.env` file - all fields are required.
 
 3. Install dependencies:
    ```
@@ -30,8 +25,6 @@ A URL shortener application built with Go.
    ```
    go run main.go
    ```
-
-5. Open a web browser and navigate to `http://localhost:8080` (or the port you specified in the `.env` file).
 
 ## Running with Docker
 
@@ -45,7 +38,7 @@ A URL shortener application built with Go.
    ```
    cp example.env .env
    ```
-   Edit the `.env` file if you want to customize any settings. The `SAFE_BROWSING_API_KEY` and `SESSION_SECRET_KEY` are optional. If not provided, the safe browsing feature will be disabled and the session secret key will be a random string.
+   Edit the `.env` file - all fields are required.
 
 3. Build the Docker image:
    ```
@@ -56,14 +49,3 @@ A URL shortener application built with Go.
    ```
    docker run -p 8080:8080 url-shortener
    ```
-
-5. Open a web browser and navigate to `http://localhost:8080`.
-
-## Configuration
-
-The application uses environment variables for configuration. You can set these in the `.env` file:
-
-- `PORT`: The port on which the server will run (default: 8080)
-- `DB_PATH`: Path to the SQLite database file (default: database/database.sqlite3)
-- `SAFE_BROWSING_API_KEY`: Google Safe Browsing API key (optional, default: disabled)
-- `SESSION_SECRET_KEY`: Secret key for encrypting session data (optional, default: a random string)
