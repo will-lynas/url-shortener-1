@@ -169,9 +169,9 @@ func (h *Handler) dashboardHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-    if urls == nil {
-        urls = []database.URL{}
-    }
+	if urls == nil {
+		urls = []database.URL{}
+	}
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string][]database.URL{"urls": urls})
@@ -221,8 +221,14 @@ func (h *Handler) newURLHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	savedURL, err := h.db.GetURLByKey(key)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(map[string]string{"key": key})
+	json.NewEncoder(w).Encode(map[string]database.URL{"key": *savedURL})
 }
 
 func (h *Handler) redirectHandler(w http.ResponseWriter, r *http.Request) {
